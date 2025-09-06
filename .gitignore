@@ -1,0 +1,19 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+#environment variable 
+.env 
+
+# Pulumi state/config you should not commit
+Pulumi.dev.yaml
+*.bak
+
+#Keys
+.pem
+
+# Editors
+.vscode/
+.idea/
+.DS_Store

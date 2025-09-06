@@ -1,6 +1,7 @@
 import pulumi 
 import pulumi_aws as aws 
 
+ami_id = 'ami-060e277c0d4cce553'
 #---------------
 # Key Pair 
 #---------------
@@ -21,7 +22,6 @@ vpc = aws.ec2.Vpc(
 )
 
 pulumi.export("vpc_id", vpc.id)
-
 #---------------
 # Internet Gateway
 #---------------
@@ -31,8 +31,8 @@ igw = aws.ec2.InternetGateway(
     vpc_id=vpc.id,
     tags={"Name":"igw"}
 )
-pulumi.export("igw_id", igw.id)
 
+pulumi.export("igw_id", igw.id)
 #---------------
 # Public Subnet
 #---------------
@@ -44,8 +44,7 @@ public_subnet = aws.ec2.Subnet(
     availability_zone = "ap-southeast-1a",
     tags={"Name": "public_subnet"}
 )
-
-pulumi.export("public_subnet_id", public_subnet.id)
+pulumi.export ("public_subnet_id", public_subnet.id)
 
 #---------------
 # Public Route Table
@@ -62,6 +61,8 @@ public_rt = aws.ec2.RouteTable(
     ],
     tags ={"Name":"public_rt"}
 ) 
+
+pulumi.export("public_rt_id", public_rt.id)
 #---------------
 # Public Route Table association
 #---------------
@@ -77,6 +78,7 @@ aws.ec2.RouteTableAssociation(
 #---------------
 
 nat_eip = aws.ec2.Eip("nat_eip")
+pulumi.export("nat_eip_id",nat_eip.id)
 
 nat_gw = aws.ec2.NatGateway(
     "nat_gw",
@@ -97,7 +99,6 @@ private_subnet = aws.ec2.Subnet(
     availability_zone = "ap-southeast-1a",
     tags={"Name": "private_subnet"}
 )
-
 pulumi.export("private_subnet_id", private_subnet.id)
 
 #---------------
@@ -116,6 +117,8 @@ private_rt = aws.ec2.RouteTable(
     tags ={"Name":"private_rt"}
 ) 
 
+pulumi.export("private_rt_id", private_rt.id)
+
 #---------------
 # Private Route Table association
 #---------------
@@ -126,13 +129,12 @@ aws.ec2.RouteTableAssociation(
     route_table_id = private_rt.id
 )
 
-
 #---------------
 # Public Security Group
 #---------------
 
-public_sg = aws.ec2.SecurityGroup(
-    "public_sg",
+bastion_sg = aws.ec2.SecurityGroup(
+    "bastion_sg",
     vpc_id = vpc.id,
     description ="Allow ssh, http, https from anywhere.",
     ingress=[
@@ -163,10 +165,57 @@ public_sg = aws.ec2.SecurityGroup(
             cidr_blocks = ["0.0.0.0/0"]
         )
     ],
-    tags={"Name":"public_sg"}
+    tags={"Name":"bastion_sg"}
 )
+pulumi.export("bastion_sg_id", bastion_sg.id)
 
-pulumi.export("public_sg_id", public_sg.id)
+#---------------
+# Bastion Server
+#---------------
+with open("MyKeyPair.pub") as f:
+	    ssh_pub_key = f.read().strip()
+        
+bastion_user_data = f"""#!/bin/bash
+set -euxo pipefail
+
+# Create ops user with sudo
+useradd -m -s /bin/bash ops || true
+usermod -aG sudo ops || true   # <-- use 'sudo' instead of 'wheel' on Ubuntu
+
+mkdir -p /home/ops/.ssh
+cat > /home/ops/.ssh/authorized_keys <<'PUBKEY'
+{ssh_pub_key}
+PUBKEY
+
+chown -R ops:ops /home/ops/.ssh
+chmod 700 /home/ops/.ssh
+chmod 600 /home/ops/.ssh/authorized_keys
+
+echo 'ops ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-ops
+chmod 440 /etc/sudoers.d/90-ops
+
+# Harden SSH
+sed -i 's/^#\\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+echo 'AllowUsers ops ubuntu' >> /etc/ssh/sshd_config   # <-- allow both users
+systemctl restart sshd
+"""
+
+bastion_server = aws.ec2.Instance(
+    "bastion_server",
+    ami =ami_id,
+    instance_type = "t2.micro",
+    subnet_id = public_subnet.id,
+    vpc_security_group_ids =[bastion_sg.id],
+    associate_public_ip_address = True,
+    key_name="MyKeyPair",
+    user_data = bastion_user_data,
+    tags={"Name": "bastion_server"}
+)
+pulumi.export("bastion_server_ip", bastion_server.public_ip)
+
+
+
 
 #---------------
 # Private Security Group
@@ -181,7 +230,7 @@ private_sg = aws.ec2.SecurityGroup(
             protocol="-1",
             from_port=0,
             to_port=0,
-            security_groups=[public_sg.id]
+            security_groups=[bastion_sg.id]
         )
     ],
     egress =[
@@ -195,42 +244,20 @@ private_sg = aws.ec2.SecurityGroup(
     tags={"Name":"private_sg"}
 )
 
-pulumi.export("private_sg_id", private_sg.id)
-
-
 
 #---------------
-# Bastion Server
-#---------------
-
-bastion_server = aws.ec2.Instance(
-    "bastion_server",
-    ami ="ami-0b8607d2721c94a77",
-    instance_type = "t2.micro",
-    subnet_id = public_subnet.id,
-    vpc_security_group_ids =[public_sg.id],
-    associate_public_ip_address = True,
-    key_name = key_pair.key_name,
-    tags={"Name": "bastion_server"}
-)
-pulumi.export("bastion_server_id", bastion_server.id)
-
-#---------------
-# DB Server
+# DB Server & MySQL installation
 #---------------
 
 db_server = aws.ec2.Instance(
     "db_server",
-    ami ="ami-0b8607d2721c94a77",
+    ami =ami_id ,
     instance_type = "t2.micro",
     subnet_id = private_subnet.id,
     vpc_security_group_ids =[private_sg.id],
     associate_public_ip_address = False,
-    key_name = key_pair.key_name,
+    key_name="MyKeyPair",
     tags={"Name": "db_server"}
 )
-pulumi.export("db_server_id", db_server.id)
 
-
-pulumi.export("bastion_server_ip", bastion_server.public_ip)
 pulumi.export("db_server_ip", db_server.private_ip)
