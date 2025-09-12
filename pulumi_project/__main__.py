@@ -214,3 +214,6 @@ db_server = aws.ec2.Instance(
 )
 
 pulumi.export("db_server_ip", db_server.private_ip)
+
+
+ssh -J ops@18.143.133.230 ubuntu@10.0.2.36
