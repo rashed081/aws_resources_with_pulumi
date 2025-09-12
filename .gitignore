@@ -12,6 +12,7 @@ Pulumi.dev.yaml
 
 #Keys
 .pem
+.pub
 
 # Editors
 .vscode/
