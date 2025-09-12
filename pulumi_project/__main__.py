@@ -2,14 +2,6 @@ import pulumi
 import pulumi_aws as aws 
 
 ami_id = 'ami-060e277c0d4cce553'
-#---------------
-# Key Pair 
-#---------------
-
-key_pair = aws.ec2.KeyPair(
-    "server_keypair",
-    public_key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDwa+VG4BJ1YT99n6jiwB3JB/FZO3zWM/YQa3K6Y/+syszi+kT6gi5+0frV6PvycXaG69DWNc9kXJkGwWBULmKQfn7miDGNgIDi6RISN/6kXebMr3++AveQHrWRs0Mx4uvOZnc/fEZD3abXetpQemU6JkmGJtDhAFgNk+8TdYzwoc/7QvDW/9qlHZ6XYBLgMlvLIfY2ej2Xf4uPEi574VFmXtp7wAhPaUe26SXI47SWE4CwNZeL52Rjniw6RcFtAHY0NsNJ1PEd97zl1hXtMHKJp9eaGhDvb2fu64ODIFL5uBrW4g6T6CR/I2cqG7oKRVeRFPbctPcR3SS/KmEhoCwn0qYoGluDdHEn0gtfFtwqe6oWGXSi3IN6iwMmK25TtRi1PrOYxVUuHtaApH0cy+FfrYwUxXSlxQ17dNkMD6VylfJwttBa2z+M/GQiIiLAU+PeyoVeK7qt+lbrnRSjYlWIV4+efwJR7c1Dnd1UKvDh3PmwWD/bGxloxGSTXPPsi89YwoTCDxOuKEhCTfLrezmDVyfP6dQOm8e90UYTt/d3DoSRtoAEgajLeWIvh5gK/wLkGThGWDhoYN4qpAuPQkUZovI3c47OXDLG8K1nSSXX3vI3XUEobEtIiU2foz7UImL68HE6uB43NKSNqBfQRKXO/gHCjtODn3K791eLutM6iw== root@roni"
-)
 
 #---------------
 # VPC
