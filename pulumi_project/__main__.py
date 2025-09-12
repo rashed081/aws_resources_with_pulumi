@@ -3,9 +3,6 @@ import pulumi_aws as aws
 
 ami_id = 'ami-060e277c0d4cce553'
 
-#---------------
-# VPC
-#---------------
 
 vpc = aws.ec2.Vpc(
     'poridhi-dev-ap-southeast-1-finance-prod',
@@ -14,9 +11,7 @@ vpc = aws.ec2.Vpc(
 )
 
 pulumi.export("vpc_id", vpc.id)
-#---------------
-# Internet Gateway
-#---------------
+
 
 igw = aws.ec2.InternetGateway(
     "igw",
@@ -25,9 +20,8 @@ igw = aws.ec2.InternetGateway(
 )
 
 pulumi.export("igw_id", igw.id)
-#---------------
-# Public Subnet
-#---------------
+
+
 public_subnet = aws.ec2.Subnet(
     "public_subnet",
     vpc_id = vpc.id,
@@ -38,9 +32,6 @@ public_subnet = aws.ec2.Subnet(
 )
 pulumi.export ("public_subnet_id", public_subnet.id)
 
-#---------------
-# Public Route Table
-#---------------
  
 public_rt = aws.ec2.RouteTable(
     "public_rt",
@@ -55,9 +46,7 @@ public_rt = aws.ec2.RouteTable(
 ) 
 
 pulumi.export("public_rt_id", public_rt.id)
-#---------------
-# Public Route Table association
-#---------------
+
 
 aws.ec2.RouteTableAssociation(
     "public_rt_association",
@@ -65,9 +54,6 @@ aws.ec2.RouteTableAssociation(
     route_table_id = public_rt.id
 )
 
-#---------------
-# NAT Gateway
-#---------------
 
 nat_eip = aws.ec2.Eip("nat_eip")
 pulumi.export("nat_eip_id",nat_eip.id)
@@ -80,9 +66,6 @@ nat_gw = aws.ec2.NatGateway(
 pulumi.export("nat_gw_id", nat_gw.id)
 
 
-#---------------
-# Private Subnet
-#---------------
 private_subnet = aws.ec2.Subnet(
     "private_subnet",
     vpc_id = vpc.id,
@@ -93,9 +76,6 @@ private_subnet = aws.ec2.Subnet(
 )
 pulumi.export("private_subnet_id", private_subnet.id)
 
-#---------------
-# Private Route Table
-#---------------
  
 private_rt = aws.ec2.RouteTable(
     "private_rt",
@@ -111,9 +91,6 @@ private_rt = aws.ec2.RouteTable(
 
 pulumi.export("private_rt_id", private_rt.id)
 
-#---------------
-# Private Route Table association
-#---------------
 
 aws.ec2.RouteTableAssociation(
     "private_rt_association",
@@ -121,9 +98,6 @@ aws.ec2.RouteTableAssociation(
     route_table_id = private_rt.id
 )
 
-#---------------
-# Public Security Group
-#---------------
 
 bastion_sg = aws.ec2.SecurityGroup(
     "bastion_sg",
@@ -161,16 +135,13 @@ bastion_sg = aws.ec2.SecurityGroup(
 )
 pulumi.export("bastion_sg_id", bastion_sg.id)
 
-#---------------
-# Bastion Server
-#---------------
+
 with open("MyKeyPair.pub") as f:
 	    ssh_pub_key = f.read().strip()
         
 bastion_user_data = f"""#!/bin/bash
 set -euxo pipefail
 
-# Create ops user with sudo
 useradd -m -s /bin/bash ops || true
 usermod -aG sudo ops || true   # <-- use 'sudo' instead of 'wheel' on Ubuntu
 
@@ -207,12 +178,6 @@ bastion_server = aws.ec2.Instance(
 pulumi.export("bastion_server_ip", bastion_server.public_ip)
 
 
-
-
-#---------------
-# Private Security Group
-#---------------
-
 private_sg = aws.ec2.SecurityGroup(
     "private_sg",
     vpc_id = vpc.id,
@@ -236,10 +201,6 @@ private_sg = aws.ec2.SecurityGroup(
     tags={"Name":"private_sg"}
 )
 
-
-#---------------
-# DB Server & MySQL installation
-#---------------
 
 db_server = aws.ec2.Instance(
     "db_server",
